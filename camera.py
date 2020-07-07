@@ -2,8 +2,6 @@ import pygame, random, math
 from classes import Card,Stack
 pygame.init()
 
-"HOLA"
-
 screen = pygame.display.set_mode((0,0),pygame.FULLSCREEN)
 screenSize = pygame.display.get_surface().get_size()
 on = True
@@ -91,10 +89,15 @@ def endClick(pos):
     moving = False
 
     clicked = []
+    clicked_unselected = []
     #on cherche les objets cliqués (même les objets stackés)
     for obj in objects:
         if isClicked(obj,pos):
-            clicked.append(obj)
+            if obj in selected:
+                clicked.append(obj)
+            else:
+                clicked_unselected.append(obj)
+                clicked.append(obj)
 
 
     if math.sqrt(math.pow(pos[0]-clicking[0],2)+math.pow(pos[1]-clicking[1],2)) < 2: #si la souris n'a pas bougé pendant le clic (si le joueur a drag)
@@ -106,27 +109,27 @@ def endClick(pos):
             obj.relative = (0,0)
 
     else: #si la souris a bougé pendant le clic
-        if len(clicked) > 1:
+        if len(clicked_unselected) > 0:
             for obj in selected:
-                if obj != clicked[1]:
                     if obj.type != "stack":
                         objects.remove(obj)
                         selected.remove(obj)
-                        if clicked[1].type != "stack":
-                            objects.insert(0,Stack([obj,clicked[1]],clicked[1].x,clicked[1].y))
+                        if clicked_unselected[-1].type != "stack":
+                            objects.remove(clicked_unselected[-1])
+                            objects.insert(0,Stack([obj,clicked_unselected[-1]],clicked_unselected[-1].x,clicked_unselected[-1].y))
                         else:
-                            clicked[1].list.insert(0,obj)
+                            clicked_unselected[-1].list.insert(0,obj)
                     else:
-                        if clicked[1].type != "stack":
-                            objects.remove(clicked[1])
-                            obj.list.append(clicked[1])
-                            obj.x = clicked[1].x
-                            obj.y = clicked[1].y
+                        if clicked_unselected[-1].type != "stack":
+                            objects.remove(clicked_unselected[-1])
+                            obj.list.append(clicked_unselected[-1])
+                            obj.x = clicked_unselected[-1].x
+                            obj.y = clicked_unselected[-1].y
                         else:
                             objects.remove(obj)
                             selected.remove(obj)
-                            clicked[1].list = obj.list + clicked[1].list
-                            clicked[1].updateStack()
+                            clicked_unselected[-1].list = obj.list + clicked_unselected[-1].list
+                            clicked_unselected[-1].updateStack()
 
     selecting = False
     selection_rect = (0,0,0,0)
@@ -223,7 +226,6 @@ def compute(): #prise en charge du clavier et calculs
         rect, screenPos, surface = getScreenPos(obj)
         if contains((screenPos[0],screenPos[1],rect.width,rect.height),selection_rect):
             changeSelection(obj,zone=True)
-
 
 def getAngle(x,y): #t'as compris
     a = math.degrees(math.acos(x))
