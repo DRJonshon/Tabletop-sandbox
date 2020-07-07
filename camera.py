@@ -16,13 +16,16 @@ normal = pygame.cursors.load_xbm('normal.xbm','normal.xbm')
 
 selection_border = pygame.image.load("selected.png")
 
-
-objects = [Card("king_of_hearts.png",230,260), Card("king_of_hearts.png",230,460)]
+objects = [Card("king_of_hearts.png",230,260), Card("king_of_hearts.png",230,460),Card("king_of_hearts.png",230,660)]
 selection_rect = (0,0,0,0)
 
 clicking = False # si le clic gauche est enfoncé
 moving = False #si un objet est en train d'être bougé
 selecting = False
+mousePos = (0,0)
+
+pygame.font.init()
+font = pygame.font.SysFont('Arial',20)
 
 def getScreenPos(obj):
     surface = pygame.transform.scale(obj.image,(round(obj.image.get_width()*scale),round(obj.image.get_height()*scale)))
@@ -116,7 +119,10 @@ def endClick(pos):
                         selected.remove(obj)
                         if clicked_unselected[-1].type != "stack":
                             objects.remove(clicked_unselected[-1])
-                            objects.insert(0,Stack([obj,clicked_unselected[-1]],clicked_unselected[-1].x,clicked_unselected[-1].y))
+                            stack = Stack([obj,clicked_unselected[-1]],clicked_unselected[-1].x,clicked_unselected[-1].y)
+                            stack.angle = clicked_unselected[-1].angle
+                            stack.updateStack()
+                            objects.insert(0,stack)
                         else:
                             clicked_unselected[-1].list.insert(0,obj)
                     else:
@@ -156,9 +162,27 @@ def startClick(pos):
         selecting = True
         selected.clear()
 
+def detach():
+    clicked = None
+    for obj in objects:
+        if isClicked(obj,mousePos):
+            clicked = obj
+    if clicked:
+        if clicked.type == "stack":
+            card = clicked.list[-1]
+            card.x = clicked.x
+            card.y = clicked.y
+            card.angle = clicked.angle
+
+            clicked.updateStack()
+            clicked.list.remove(card)
+            objects.append(card)
+
 def events():
     global on
     global clicking
+    global mousePos
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             on = False
@@ -167,6 +191,8 @@ def events():
             keys.append(event.key)
             if event.key == pygame.K_ESCAPE:
                 on = False
+            if event.key == pygame.K_t:
+                detach()
 
         elif event.type == pygame.KEYUP:
             keys.remove(event.key)
@@ -190,12 +216,14 @@ def events():
 
 
 
-        if clicking:
-            if event.type == pygame.MOUSEMOTION:
+
+        elif event.type == pygame.MOUSEMOTION:
+            mousePos = event.pos
+            if clicking:
                 if selecting:
-                    updateSelection(event.pos)
+                        updateSelection(event.pos)
                 else:
-                    moveSelection(event.pos)
+                        moveSelection(event.pos)
 
 def compute(): #prise en charge du clavier et calculs
     global scale
@@ -227,6 +255,14 @@ def compute(): #prise en charge du clavier et calculs
         if contains((screenPos[0],screenPos[1],rect.width,rect.height),selection_rect):
             changeSelection(obj,zone=True)
 
+    for obj in objects:
+        if obj.type == "stack" and len(obj.list) == 1:
+            obj.list[0].x = obj.x
+            obj.list[0].y = obj.y
+            obj.list[0].angle = obj.angle
+            objects.append(obj.list[0])
+            objects.remove(obj)
+
 def getAngle(x,y): #t'as compris
     a = math.degrees(math.acos(x))
     if y <0:
@@ -253,6 +289,10 @@ def draw():
                 surface = pygame.transform.scale(selection_border,(round(selection_border.get_width()*scale),round(selection_border.get_height()*scale)))
                 surface1 = pygame.transform.rotate(surface,obj.angle)
                 screen.blit(surface1,screenPos)
+            if obj.type == "stack":
+                text = str(len(obj.list))+" cards"
+                rect, screenPos, surface1 = getScreenPos(obj)
+                screen.blit(font.render(text,True,(0,0,0)),(screenPos[0]-font.size(text)[0],screenPos[1]))
     if selecting:
         s = pygame.Surface((abs(selection_rect[2]),abs(selection_rect[3])))
         s.set_alpha(128)
